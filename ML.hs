@@ -24,18 +24,32 @@ runByteCode :: ByteCode -> Comp ()
 runByteCode op = case op of
  LOAD_VAL n -> modify (loadVal(n):)
  READ_VAR c -> do
-  code <-  state (\st -> case st of
-                (x:xs) -> (Just (readVar (x:xs) c),xs)
-                _ -> (Nothing, st)
-        )
-  modify(loadVal(1):)
+  code <- state (\st -> do
+    case readVar st c of
+     Just a -> (a,st)
+     )
+  modify(code:)
  WRITE_VAR c -> do
   code <- gets head
   modify (writeVar code c:)
+ ADD -> do 
+  a <- gets head
+  b <- gets head
+  modify((add a b):)
+ MULTIPLY -> do
+  a <- gets head
+  b <- gets head
+  modify((multiply a b):)
  RETURN_VALUE -> do
   code <- gets head
   tell [ readValue(code) ]
- 
+
+multiply :: Code -> Code -> Code
+multiply a b = Code {var = Nothing, value = readValue(a) * readValue(b)}
+
+add :: Code -> Code -> Code
+add a b = Code {var=Nothing, value = readValue(a) + readValue(b)}
+
 loadVal :: Int -> Code
 loadVal n = Code {var=Nothing, value=n} 
 
@@ -53,7 +67,7 @@ readVar [] _ = Nothing
 readVar (x:xs) c =  if (matchVar x c) then Just  x else readVar xs c
 
 matchVar :: Code -> Char -> Bool
-matchVar code c = fromJust(getVar code) == c
+matchVar code c = if (getVar code) == Nothing then False else fromJust (getVar code) == c
 
 runProgram :: Comp ()
 runProgram = do
@@ -72,6 +86,10 @@ program = [
  LOAD_VAL 2,
  WRITE_VAR 'y',
  READ_VAR 'x',
+ LOAD_VAL 1,
+ ADD,
+ READ_VAR 'y',
+ MULTIPLY,
  RETURN_VALUE
  ]
 
